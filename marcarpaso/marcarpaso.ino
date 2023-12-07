@@ -7,8 +7,9 @@
 
 
 // Processing andar velocidad, delante y atras, y la velocidad, negativa para atras
-// processing manda velocidad, mientras se pulse avanza
-// 
+// processing manda velocidad, mientras se pulse avanza, pensar como hacerlo
+//
+int i= 0;
 
 
 void setup() {
@@ -18,20 +19,15 @@ void setup() {
   pinMode(EN, OUTPUT);
   pinMode(DIR1, OUTPUT);
   pinMode(DIR2, OUTPUT);
-  digitalWrite( EN, LOW );
-  digitalWrite( DIR1, HIGH ); // atras
+  digitalWrite(EN, LOW);
+  digitalWrite(DIR1, HIGH);  // atras
+  Serial.begin(115200); 
 }
-
 void loop() {
-  // put your main code here, to run repeatedly:
-  digitalWrite( STP1, HIGH );
-  digitalWrite( STP1, LOW );
-  /*
-  digitalWrite( STP2, HIGH );
-  
-  digitalWrite( STP1, LOW );
-  digitalWrite( STP2, LOW );
-  */
-  
-  delay(10);
+  while (i < 3200) {
+    digitalWrite( STP2, HIGH );
+    digitalWrite( STP2, LOW );
+    delay(10);
+    i++ ;
+  } 
 }

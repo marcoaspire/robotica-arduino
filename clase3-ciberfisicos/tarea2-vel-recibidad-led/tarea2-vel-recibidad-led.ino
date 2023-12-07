@@ -6,8 +6,11 @@ dar confirmacion
 #include <stdio.h>
 
 #define LED 2
-string opcion;
-char []o2;
+String opcion;
+String tiempoFuncionando;
+int tiempoEncendido = 1000;
+int tiempoApagado = 1000;
+
 
 void setup() {
   // put your setup code here, to run once:
@@ -16,32 +19,34 @@ void setup() {
 }
 
 void loop() {
+  digitalWrite(LED,HIGH);
+  delay(tiempoEncendido);
+  digitalWrite(LED, LOW);
+  delay(tiempoApagado);
+
   // put your main code here, to run repeatedly:
   if (Serial.available()) {
     opcion = Serial.readString();
     opcion.trim();
-    o2 = strtok(opcion, ";");
+    if ((opcion.startsWith("L=") || opcion.startsWith("H=")) && opcion.endsWith(";")) {
+      tiempoFuncionando = opcion.substring(2, opcion.length() - 1);
+      if (tiempoFuncionando.length() <= 4) 
+      {
+        if (opcion.startsWith("L=")) {
+          tiempoApagado = tiempoFuncionando.toInt();
+          Serial.println("Nuevo tiempo apagado:" + (String)tiempoApagado);
 
-    Serial.println(opcion);
-
-    for (int i=0;i< sizeof(o2); i++)
-      Serial.println(o2[i]);
-
-    Serial.println("FIN");
-    /*
-    switch (opcion) {
-      case 'a':
-        digitalWrite(LED,HIGH);
-        Serial.println("LED -> ON");
-        break;
-      case 'b':
-        digitalWrite(LED, LOW);
-        Serial.println("LED -> OFF");
-        break;
-      default:
-        Serial.println("Comando no reconocido");
-        break;
+        } else if (opcion.startsWith("H=")) {
+          tiempoEncendido = tiempoFuncionando.toInt();  
+          Serial.println("Nuevo tiempo encendido:" + (String)tiempoEncendido);
+        }
+      }
+      else{
+          Serial.println("Tiempo maximo 9999 milesegundos");
+      }
     }
-    */
+    else{
+      Serial.println("Comando invalido, el comando debe seguir esta estructura H=4000; o L=2000;");
+    }
   }
 }
