@@ -1,6 +1,6 @@
 /*
 Hacer parpader un LED, definiendo los tiempos con los sig. comandos L=xxxx;, H=xxxxx;
-dar confirmacion
+dar confirmacion, Terminada
 */
 #include <string.h>
 #include <stdio.h>

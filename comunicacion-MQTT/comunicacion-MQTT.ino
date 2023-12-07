@@ -1,8 +1,11 @@
 #include <WiFi.h>
 #include <MQTT.h>
 
-const char ssid[] = "iot-ieya";
-const char pass[] = "C@IoT#148";
+// const char ssid[] = "iot-ieya";
+// const char pass[] = "C@IoT#148";
+
+const char ssid[] = "Piso-sagemcom2E90";
+const char pass[] = "WYMRW4EMMW2MMD";
 
 WiFiClient net;
 MQTTClient client;
@@ -36,7 +39,7 @@ void setup() {
 
   // start wifi and mqtt
   WiFi.begin(ssid, pass);
-  client.begin("192.168.48.221", net); // poner direccion ip
+  client.begin("192.168.0.18", net); // poner direccion ip
   client.onMessage(messageReceived);
 
   connect();

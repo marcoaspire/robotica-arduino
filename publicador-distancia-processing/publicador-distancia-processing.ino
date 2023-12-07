@@ -7,8 +7,12 @@ const int EchoPin = 18;
 const int TriggerPin = 17;
 const int LedPin = 13;
 
-const char ssid[] = "iot-ieya";
-const char pass[] = "C@IoT#148";
+const String IPAddress = "192.168.0.18"; 
+// const char ssid[] = "iot";
+// const char pass[] = "";
+
+const char ssid[] = "Piso-";
+const char pass[] = "";
 
 WiFiClient net;
 MQTTClient client;
@@ -56,7 +60,8 @@ void setup() {
   pinMode(EchoPin, INPUT);
   // start wifi and mqtt
   WiFi.begin(ssid, pass);
-  client.begin("192.168.48.221", net);
+  // client.begin("192.168.48.221", net);
+  client.begin("192.168.0.18", net);
   client.onMessage(messageReceived);
 
   connect();
@@ -71,8 +76,8 @@ void loop() {
     connect();
   }
   int cm = ping(TriggerPin, EchoPin);
-  Serial.print("Distancia: ");
-  Serial.println(cm);
+  //Serial.print("Distancia: ");
+  //Serial.println(cm);
   delay(1000);
 
   // publish a message roughly every second.

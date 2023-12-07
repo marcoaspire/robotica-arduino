@@ -2,13 +2,11 @@ import mqtt.*;
 
 MQTTClient client;
 float[] distancias ;
-// Para ejecutar, correr shiftr 
-//NO ESTA FUNCIONANDO
 // Recibe los mensajes del canal hello que son enteror y los grafica en tiempo real
 
 void setup() {
   client = new MQTTClient(this);
-  client.connect("mqtt://localhost:1883/1884", "processing");
+  client.connect("mqtt://localhost", "processing");
   client.subscribe("hello");
 
   size(400, 200);
@@ -32,7 +30,7 @@ void messageReceived(String topic, byte[] payload) {
 
 void agregarDistancia(float nuevaDistancia){
   float[] nuevasDistancia = new float[distancias.length + 1];
-  System.arraycopy(distancias, 0, nuevasDistancia, 0, distancias.length);
+  System.arraycopy(distancias, 0, nuevasDistancia, 0, data.length);
   nuevasDistancia[distancias.length] = nuevaDistancia;
   distancias = nuevasDistancia;  
 
