@@ -27,7 +27,8 @@ void keyPressed() {
 void messageReceived(String topic, byte[] payload) {
   println( topic + "v: " + new String(payload));
   float distancia = Float.parseFloat(new String(payload));
-  agregarDistancia(distancia);
+  if (distancia < 51)
+    agregarDistancia(distancia);
   println( topic + ": " + distancia+ "");
 }
 
