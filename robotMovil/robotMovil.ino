@@ -4,9 +4,12 @@
 #define DIR1 32
 #define DIR2 26
 
+#define VEL1 2100
+#define VEL2 1500
+#define VEL3 850
+
 #include <WiFi.h>
 #include <MQTT.h>
-
 
 
 WiFiClient net;
@@ -27,7 +30,7 @@ public:
   /*
     Rueda mide 7 cm, perimetro pi * diametro = 21.99 cm avanza cada vuelta
     Rueda mide 8 cm, perimetro pi * diametro = 25.13 cm avanza cada vuelta es esta
-    22 cm - necesita 3200 pulsos aka 360 
+    25 cm - necesita 3200 pulsos aka 360 
     i.e 8.888 pulsos equivale a un grado  
     grados | pulsos
       180  | 3200 vuelta
@@ -103,9 +106,21 @@ public:
     //TODO: Calcula la cantidad de pasos necesarios para girar 45 grados, diametro de rueda?
     int vueltasNecesarias = 10;
     int vuetasRealizadas = 0;
+    delante(1);
+    avanzaVuelta();
+    reversa(1);
+  }
+
+  void vueltaDerecha(){
     reversa(2);
     avanzaVuelta();
-    delante(1);
+    delante(2);
+  }
+
+  void vueltaDerechaAtras(){
+    delante(2);
+    avanzaVuelta();
+    reversa(2);
   }
 
   void detenerMotores() {
@@ -115,17 +130,17 @@ public:
   }
 
   int aumentoVelocidad(){
-    if (velocidad == 2500) {
-      return 1500;
+    if (velocidad == VEL1) {
+      return VEL2;
     } 
-    return 750;   
+    return VEL3;   
   }
 
   int reduccionVelocidad(){
-    if (velocidad == 750) {
-      return 1500;
+    if (velocidad == VEL3) {
+      return VEL2;
     } 
-    return 2500;
+    return VEL1;
   }
 
   void setVelocidad(int v){
@@ -178,19 +193,19 @@ void frenado(int velocidadRecibida)
 {
   int velocidadActual = velocidadRecibida;
   int pu = 0;
-  if (velocidadActual == 750 )
+  if (velocidadActual == VEL3 )
   {
-    myCoche.setVelocidad(1500);
-    velocidadActual = 1500;
+    myCoche.setVelocidad(VEL2);
+    velocidadActual = VEL2;
     while (pu < 201) {
       myCoche.avanzaVuelta();
       pu++;
     }
   }
   pu=0;
-  if (velocidadActual == 1500 )
+  if (velocidadActual == VEL2 )
   {
-    myCoche.setVelocidad(2500);
+    myCoche.setVelocidad(VEL1);
     while (pu < 201) {
       myCoche.avanzaVuelta();
       //myCoche.vueltaIzquierda();
@@ -224,11 +239,15 @@ void delantePulso()
 void giroIzquierdo()
 {
   int q = 0;
-  //180 - 3200
-  while (q < 3300) {
+  /* 
+    grados | pulsos
+      180  | 3200 vuelta
+       90 | 1600
+       45  | 800
+       22.5  | 400  
+  */
+  while (q < 400) {
     myCoche.vueltaIzquierda();
-
-    //delay(10); // 1
     q++;
   }
 }
@@ -237,10 +256,28 @@ void giroIzquierdoAtras()
 {
   int q = 0;
   //180 - 3200
-  while (q < 3300) {
+  while (q < 400) {
     myCoche.vueltaIzquierdaAtras();
 
     //delay(10); // 1
+    q++;
+  }
+}
+
+void giroDerecho()
+{
+  int q = 0;
+  while (q < 400) {
+    myCoche.vueltaDerecha();
+    q++;
+  }
+}
+
+void giroDerechoAtras()
+{
+  int q = 0;
+  while (q < 400) {
+    myCoche.vueltaDerechaAtras();
     q++;
   }
 }
@@ -312,7 +349,10 @@ void messageReceived(String &topic, String &payload) {
     Serial.println("Entramos ");
     delantePulso();  
   } else if (payload.equals("der")) {
-    //derecha();
+    if (digitalRead(DIR1) == 0 )
+      giroDerecho();
+    else 
+      giroDerechoAtras();
   } else if (payload.equals("izq")) {
     if (digitalRead(DIR1) == 0 )
       giroIzquierdo();
@@ -322,27 +362,19 @@ void messageReceived(String &topic, String &payload) {
     myCoche.delante(1);
     myCoche.delante(2);
   } else if (payload.equals("atras")) {
-    Serial.println("dd andtes " + String(digitalRead(DIR1)) );
     myCoche.reversa(1);
     myCoche.reversa(2);
-    Serial.println("dd " + String(digitalRead(DIR1)) );
-    Serial.println("dd2 " + String(digitalRead(DIR2)) );
-
-    
   } else if (payload.equals("subirVelocidad")) {
     myCoche.setVelocidad(myCoche.aumentoVelocidad());
     Serial.println("Nueva velocidad " + String(myCoche.getVelocidad()));
-    // subirVelocidad();
   } else if (payload.equals("bajarVelocidad")) {
     myCoche.setVelocidad(myCoche.reduccionVelocidad());
     Serial.println("Nueva velocidad " + String(myCoche.getVelocidad()));
-    // bajarVelocidad();
   } else if (payload.equals("detener")) {
     int velocidadActual = myCoche.getVelocidad();
     if (velocidadActual < 2500){
       frenado(velocidadActual);
     }
-    //detener();
   } else {
     // Manejar el caso por defecto (comando no reconocido)
     Serial.println("Comando no reconocido");
