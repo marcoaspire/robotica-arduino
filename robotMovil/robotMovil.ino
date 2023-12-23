@@ -10,7 +10,9 @@
 
 #include <WiFi.h>
 #include <MQTT.h>
+#include <AccelStepper.h>
 
+int b = 16; // distancia entre ruedas
 WiFiClient net;
 MQTTClient client;
 unsigned long tiempoInicio;
@@ -19,16 +21,20 @@ float velocidadDerecha;
 float velocidadAngular; 
 float velocidadLineal; 
 float velocidadSegundos;
+float velocidadMotores; 
+float matriz_transformacion[2][2]={{1.0/2.0,1.0/2.0},{-b/2.0,b/2.0}};
 
 unsigned long tiempoTranscurrido;
 
-int b = 16;
-  int x = 0;
-  int y = 0;
-  int theta = 0;
 
-    AccelStepper motorIzquierdo(AccelStepper::DRIVER, STP1);
-    AccelStepper motorDerecho(AccelStepper::DRIVER, STP2);
+
+
+int x = 0;
+int y = 0;
+int theta = 0;
+
+AccelStepper motorIzquierdo(AccelStepper::DRIVER, STP1);
+AccelStepper motorDerecho(AccelStepper::DRIVER, STP2);
 unsigned long lastMillis = 0;
 // int velocidad = 2500;
 
@@ -207,19 +213,38 @@ void connect() {
 
 // }
 
-void actualizar_posicion(float matriz_transformacion [][2]){
-  int vel_lineal = matriz_transformacion[0][0] *velocidadIzquierda + matriz_transformacion[0][1] * velocidadDerecha;
-  int vel_angular = matriz_transformacion[1][0]*velocidadIzquierda + matriz_transformacion[1][1] * velocidadDerecha;
-  // actualiza 
-  x += vel_lineal * cos(theta);
-  y += vel_lineal * sin(theta);
-  theta += vel_angular;
+void actualizarPosicion(float velocidadM){
+  Serial.println("Velocidad motor: " + String(velocidadM));
+  Serial.println("M{0}{0}: " + String(matriz_transformacion[0][0]));
 
+  // Si la velocidad de ambos motores siempre es la misma, optimizar codigo
+  int vel_lineal = matriz_transformacion[0][0] *velocidadM + matriz_transformacion[0][1] * velocidadM;
+  Serial.println("Velocidad vel_lineal: " + String(vel_lineal));
+
+  int vel_angular = matriz_transformacion[1][0]*velocidadM + matriz_transformacion[1][1] * velocidadM;
+  Serial.println("Velocidad vel_angular: " + String(vel_lineal));
+
+
+  Serial.print("Velocidad lineal actual: ");
+  Serial.println(vel_lineal);
+  Serial.print("Velocidad angular actual: ");
+  Serial.println(vel_angular);
+  // TODO: Actualiza x y , multiplicando por la matriz que falta M*{{vlineal}{w velocidad angular}}
+
+  // Las sig 2 lineas no tienen sentido 
+  // x += vel_lineal * cos(theta);
+  // y += vel_lineal * sin(theta);
+
+  //Actualizar bien theta
+  //theta += vel_angular;
+  Serial.print("theta ");
+  Serial.print(theta);
+  Serial.print("x: " + String(x) + " y: " + String(y));
 }
 
 void setup() {
 
-  float matriz_transformacion[2][2]={{1/2,1/2},{-1/2*b,1/2*b}};
+  
 
   Serial.begin(115200);
 
@@ -230,6 +255,8 @@ void setup() {
 
   connect();
   Serial.println("empieza...");
+  // Serial.println("M{0}{0}: " + String(matriz_transformacion[0][0]));
+  Serial.println(matriz_transformacion[1][1]);
 }
 
 void frenado(int velocidadRecibida)
@@ -296,18 +323,20 @@ void delantePulso()
 
   // Calcular la velocidad en PPS, 1,000,000 (microsegundos en un segundo)
   velocidadSegundos =  tiempoTranscurrido/ 1000000.0;
-  velocidadAngular = pu / velocidadSegundos;
+  velocidadMotores = pu / velocidadSegundos;
   //Tiempo
   Serial.print("Tiempo: ");
   Serial.println(velocidadSegundos);
 
   // Mostrar la velocidad en el puerto serie
-  Serial.print("Velocidad angular actual: ");
-  Serial.println(velocidadAngular);
+  Serial.print("Velocidad de los motores actual: ");
+  Serial.println(velocidadMotores);
 
-  velocidadLineal = 12.065/ velocidadSegundos;  // cm por seg, esta es velocidad lineal de los motores
-  Serial.print("Velocidad lineal actual: ");
-  Serial.println(velocidadLineal);
+  actualizarPosicion(velocidadMotores);
+
+  // velocidadLineal = 12.065/ velocidadSegundos;  // cm por seg, esta es velocidad lineal de los motores
+  // Serial.print("Velocidad lineal actual: ");
+  // Serial.println(velocidadLineal);
 
 
   // Reiniciar el tiempo para la siguiente medición
@@ -335,16 +364,16 @@ void giroIzquierdo()
   //Conociendo el angulo, la trayectoria = radio por angulo en radianes
   // 180 = pi radianes
   float anguloRadianes = 22.5*3.1416/180;
-  float distancidaRecorrida = 4*anguloRadianes;
+  float distanciaRecorrida = 4*anguloRadianes;
   Serial.print("Distancia recorrida vuelta izq cm: ");
   Serial.println(distanciaRecorrida);
 
   // Calcular la velocidad en PPS, 1,000,000 (microsegundos en un segundo)
   velocidadSegundos =  tiempoTranscurrido/ 1000000.0;
-  velocidadLineal = distanciaRecorrida/velocidadSegundos;
-
-  Serial.print("Velocidad lineal actual: ");
-  Serial.println(velocidadLineal);
+  velocidadMotores = distanciaRecorrida/velocidadSegundos;
+  actualizarPosicion(velocidadMotores);
+  // Serial.print("Velocidad lineal actual: ");
+  // Serial.println(velocidadMotores);
 
    // Reiniciar el tiempo para la siguiente medición
   tiempoInicio = micros();
