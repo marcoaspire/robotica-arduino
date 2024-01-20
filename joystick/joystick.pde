@@ -1,10 +1,21 @@
 import mqtt.*;
 
 MQTTClient client;
-int tiempoEspera = 1000;  // Tiempo de espera en milisegundos (1 segundo)
+int tiempoEspera = 1300;  // Tiempo de espera en milisegundos (1 segundo)
 int ultimoTiempoPresionado = 0;
 int botonSize = 50;  // Tamaño de los botones
+float[] distancias = {0} ;
+float dis= 80;
+
+float robotX, robotY;
+float robotAngle;
+ArrayList<PVector> path;
+
+
 boolean [] vuelta;
+String opcion;
+String distanciaRecibida;
+
 void setup() {
   size(400, 400);
   vuelta = new boolean[2];
@@ -12,20 +23,76 @@ void setup() {
   vuelta[1] = false; 
   
   client = new MQTTClient(this);
-  client.connect("mqtt://localhost", "processing");
-  //client.connect("mqtt://localhost:1883/1884", "processing");
+  //client.connect("mqtt://localhost", "processing");
+  client.connect("mqtt://localhost:1883/1884", "processing");
   client.subscribe("comandos");
-  
+  path = new ArrayList<PVector>();
 }
 
 void draw() {
   background(255);
+  // Muestra la trayectoria
+  stroke(0);
+  noFill();
+  translate(width/2, height/2);
+  beginShape();
+   vertex(-280, -280);
+   vertex(-280, 280);
+   vertex(280, 280);
+   vertex(280, -280);
+  endShape(CLOSE);
+  beginShape();
+
+    for (PVector point : path) {
+      vertex(point.x, point.y);
+    }
   
+  endShape();
+
+  // Muestra el robot en la posición actual
+    drawRobot(robotX, robotY, robotAngle);
+
+  // Mueve el robot y agrega la posición actual a la trayectoria cada 30 frames
+  // if (frameCount % 30 == 0) {
+  //   float randomX = random(-20, 20);
+  //   float randomY = random(-20, 20);
+  //   float randomAngle = random(TWO_PI);
+
+  //   robotX += randomX;
+  //   robotY += randomY;
+  //   robotAngle = randomAngle;
+
+  //   path.add(new PVector(robotX, robotY));
+  // }
+
+
   // Dibuja los botones en forma de cruz
-  dibujarBoton(width / 2 - botonSize / 2, height / 2 - botonSize * 2, botonSize, "△");
-  dibujarBoton(width / 2 - botonSize / 2, height / 2 + botonSize, botonSize, "▽");
-  dibujarBoton(width / 2 - botonSize * 2, height / 2 - botonSize / 2, botonSize, "izq");
-  dibujarBoton(width / 2 + botonSize, height / 2 - botonSize / 2, botonSize, "der");
+  // dibujarBoton(width / 2 - botonSize / 2, height / 2 - botonSize * 2, botonSize, "△");
+  // dibujarBoton(width / 2 - botonSize / 2, height / 2 + botonSize, botonSize, "▽");
+  // dibujarBoton(width / 2 - botonSize * 2, height / 2 - botonSize / 2, botonSize, "izq");
+  // dibujarBoton(width / 2 + botonSize, height / 2 - botonSize / 2, botonSize, "der");
+}
+
+void drawRobot(float x, float y, float angle) {
+  if (x < 270 && x > -270 && y < 270 && y > -270 )
+  {
+    //println("Ubicacion del robot: " + x, "," + y);
+    pushMatrix();
+      //translate(width/2, height/2);
+      translate(x, y);
+      rotate(angle);
+      fill(150); // cambiar color si detecta uno cercano
+      rect(-5, -5, 20, 10); // robot
+      fill(100); 
+        if (dis<50)
+          fill(50);
+      line(0, 0, dis, 0); // AQUI PONER la distancia que recibe , x,y,w,h
+    popMatrix();
+  }
+  else{
+    // Se sale del recuadro
+  // hacerlo girar y que avance a otra posicion
+  }
 }
 
 void dibujarBoton(float x, float y, float size, String tag) {
@@ -131,7 +198,7 @@ void keyReleased() {
   } else if (key == CODED) {
     if (keyCode == UP) {
       println("Solto La tecla UP");
-      //client.publish("comandos", "detener");
+      client.publish("comandos", "detener");
 
       vuelta[0] = false;
     } else if (keyCode == LEFT) {
@@ -150,4 +217,38 @@ void keyReleased() {
 
 void messageReceived(String topic, byte[] payload) {
   println( topic + ": " + new String(payload));
+  // x=399,y=0,theta=0;
+  opcion = new String(payload);
+  opcion.trim();
+  if ((opcion.startsWith("D=") || opcion.startsWith("d="))) {
+    distanciaRecibida = opcion.substring(2, opcion.length() - 1);
+    dis = Float.parseFloat(distanciaRecibida);
+    println("distancia recibida");
+
+    agregarDistancia(Float.parseFloat(distanciaRecibida));
+  }
+  else if (opcion.startsWith("X=") || opcion.startsWith("x=")) {
+    String posiciones =  opcion.split("[=,]");
+
+    float nuevoX = opcion[1];
+    float nuevoY = opcion[3];
+    float nuevoAngulo = opcion[5];
+
+    robotX += nuevoX;
+    robotY += nuevoY;
+    robotAngle = nuevoAngulo;
+
+    path.add(new PVector(robotX, robotY));  
+  }
+}
+
+void agregarDistancia(float nuevaDistancia){
+  float[] nuevasDistancia = new float[distancias.length + 1];
+  System.arraycopy(distancias, 0, nuevasDistancia, 0, distancias.length);
+  nuevasDistancia[distancias.length] = nuevaDistancia;
+  distancias = nuevasDistancia;  
+
+  if (distancias.length > width / 10) {
+    distancias = subset(distancias, 1);
+  }
 }

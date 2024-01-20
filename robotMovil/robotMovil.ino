@@ -1,9 +1,15 @@
+// Motores
 #define STP2 27
 #define STP1 33
 #define EN 25
 #define DIR1 32
 #define DIR2 26
 
+// sensor 
+const int EchoPin = 18;
+const int TriggerPin = 17;
+const int LedPin = 13;
+//velocidades
 #define VEL1 2100
 #define VEL2 1500
 #define VEL3 850
@@ -11,6 +17,9 @@
 #include <WiFi.h>
 #include <MQTT.h>
 #include <AccelStepper.h>
+
+#include "Clase.h"
+Clase miObjeto; 
 
 
 int b = 16; // distancia entre ruedas
@@ -26,7 +35,7 @@ float velocidadMotores;
 float matriz_transformacion[2][2]={{1.0/2.0,1.0/2.0},{-b/2.0,b/2.0}};
 
 unsigned long tiempoTranscurrido;
-
+unsigned long lastMillis = 0;
 
 
 
@@ -36,7 +45,6 @@ int theta = 0;
 
 AccelStepper motorIzquierdo(AccelStepper::DRIVER, STP1);
 AccelStepper motorDerecho(AccelStepper::DRIVER, STP2);
-unsigned long lastMillis = 0;
 // int velocidad = 2500;
 
 int pulsos = 0;
@@ -196,6 +204,18 @@ public:
 
 Coche myCoche;
 
+int ping(int TriggerPin, int EchoPin) {
+  long duration, distanceCm;
+  digitalWrite(TriggerPin, LOW);  //para generar un pulso limpio ponemos a LOW 4us
+  delayMicroseconds(4);
+  digitalWrite(TriggerPin, HIGH);  //generamos Trigger (disparo) de 10us
+  delayMicroseconds(10);
+  digitalWrite(TriggerPin, LOW);
+  duration = pulseIn(EchoPin, HIGH);     //medimos el tiempo entre pulsos, en microsegundos
+  distanceCm = duration * 10 / 292 / 2;  //convertimos a distancia, en cm
+  return distanceCm;
+}
+
 void connect() {
   Serial.print("checking wifi...");
   while (WiFi.status() != WL_CONNECTED) {
@@ -210,7 +230,7 @@ void connect() {
   }
 
   Serial.println("\nconnected!");
-
+  
   client.subscribe("comandos");
 }
 
@@ -282,14 +302,15 @@ void actualizarPosicion(float velocidadM, float angulo, bool estaGirando){
   Serial.print("theta ");
   Serial.print(theta);
   Serial.print("x: " + String(x) + " y: " + String(y));
+  //Mandan nuevas ubicaciones
+  client.publish("/comandos", "x="+String(x)+",y="+String(y)+ ",theta="+String(theta) + ";");
 }
 
 void setup() {
-
-  
-
   Serial.begin(115200);
-
+  pinMode(LedPin, OUTPUT);
+  pinMode(TriggerPin, OUTPUT);
+  pinMode(EchoPin, INPUT);  
   // start wifi and mqtt
   WiFi.begin(ssid, pass); 
   client.begin("192.168.0.14", net); // poner direccion ip uni 192.168.48.221, casa :192.168.0.14. 
@@ -297,6 +318,9 @@ void setup() {
 
   connect();
   Serial.println("empieza...");
+  
+  // Serial.println(miObjeto.miMetodo()); 
+  // miObjeto.ping(1,1); 
   // Serial.println("M{0}{0}: " + String(matriz_transformacion[0][0]));
   Serial.println(matriz_transformacion[1][1]);
 }
@@ -559,7 +583,13 @@ void loop() {
   Serial.println("terminaando...");
   pulsos++;
 */  
-
+  int cm = ping(TriggerPin, EchoPin);
+  delay(1000);
+  // publish a message roughly every second.
+  if (millis() - lastMillis > 5000) {
+    lastMillis = millis();
+    client.publish("/comandos", "D=" + String(cm) + ";");
+  }
 }
 
 void messageReceived(String &topic, String &payload) {
