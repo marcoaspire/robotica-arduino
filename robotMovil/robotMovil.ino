@@ -12,6 +12,7 @@
 #include <MQTT.h>
 #include <AccelStepper.h>
 
+
 int b = 16; // distancia entre ruedas
 WiFiClient net;
 MQTTClient client;
@@ -44,8 +45,10 @@ int q=0;
 // Custom class definition
 class Coche {
 private:
-	int velocidad;  
+	int velocidad;
 public:
+  bool vaReversa;
+  bool vaIzquierda;  
   // Constructor
   /*
     Rueda mide 7 cm, perimetro pi * diametro = 21.99 cm avanza cada vuelta
@@ -75,6 +78,8 @@ public:
     digitalWrite(DIR1, LOW);
     digitalWrite(DIR2, LOW); 
     velocidad = 2500;
+    vaReversa = false;
+    vaIzquierda = false;
   }
 
   void reversa(int motor) {
@@ -121,6 +126,7 @@ public:
     int vuetasRealizadas = 0;
     reversa(1);
     avanzaVuelta();
+    vaIzquierda = true;
 
     /*
     while (vuetasRealizadas < vueltasNecesarias)
@@ -140,18 +146,21 @@ public:
     delante(1);
     avanzaVuelta();
     reversa(1);
+    vaIzquierda = true;
   }
 
   void vueltaDerecha(){
     reversa(2);
     avanzaVuelta();
     delante(2);
+    vaIzquierda = false;
   }
 
   void vueltaDerechaAtras(){
     delante(2);
     avanzaVuelta();
     reversa(2);
+    vaIzquierda = false;
   }
 
   void detenerMotores() {
@@ -213,16 +222,28 @@ void connect() {
 
 // }
 
-void actualizarPosicion(float velocidadM){
+void actualizarPosicion(float velocidadM, float angulo, bool estaGirando){
+  int vel_angular = 0;
+  float matriz_conocer_posicion[3][2]={{cos(angulo), 0},{sin(angulo),0}, {0,1}};// o es theta
+
   Serial.println("Velocidad motor: " + String(velocidadM));
   Serial.println("M{0}{0}: " + String(matriz_transformacion[0][0]));
+
+  Serial.println("Matriz_transformacion: " + String(matriz_transformacion[0][0]) + "," + String(matriz_transformacion[0][1]) +  "," +  String(matriz_transformacion[1][0])+ ","+ String(matriz_transformacion[1][1]));
 
   // Si la velocidad de ambos motores siempre es la misma, optimizar codigo
   int vel_lineal = matriz_transformacion[0][0] *velocidadM + matriz_transformacion[0][1] * velocidadM;
   Serial.println("Velocidad vel_lineal: " + String(vel_lineal));
 
-  int vel_angular = matriz_transformacion[1][0]*velocidadM + matriz_transformacion[1][1] * velocidadM;
-  Serial.println("Velocidad vel_angular: " + String(vel_lineal));
+  if (estaGirando)
+  {
+    vel_angular = matriz_transformacion[1][0]*velocidadM + matriz_transformacion[1][1] * velocidadM * (-1);
+  }
+  else
+  {
+    vel_angular = matriz_transformacion[1][0]*velocidadM + matriz_transformacion[1][1] * velocidadM;
+  } 
+  Serial.println("Velocidad vel_angular: " + String(vel_angular));
 
 
   Serial.print("Velocidad lineal actual: ");
@@ -230,10 +251,31 @@ void actualizarPosicion(float velocidadM){
   Serial.print("Velocidad angular actual: ");
   Serial.println(vel_angular);
   // TODO: Actualiza x y , multiplicando por la matriz que falta M*{{vlineal}{w velocidad angular}}
+  if (myCoche.vaIzquierda)
+  {
+    theta = theta - (matriz_conocer_posicion[2][0] * vel_lineal + matriz_conocer_posicion[2][1] * vel_angular);
+  }
+  else
+  {
+    theta = theta + (matriz_conocer_posicion[2][0] * vel_lineal + matriz_conocer_posicion[2][1] * vel_angular);
+  }
+
+  if (myCoche.vaReversa)
+  {
+    x = x - (matriz_conocer_posicion[0][0] * vel_lineal + matriz_conocer_posicion[0][1] * vel_angular);
+    y = y - (matriz_conocer_posicion[1][0] * vel_lineal + matriz_conocer_posicion[1][1] * vel_angular);
+  }
+  else
+  {
+    x = x + (matriz_conocer_posicion[0][0] * vel_lineal + matriz_conocer_posicion[0][1] * vel_angular);
+    y = y + (matriz_conocer_posicion[1][0] * vel_lineal + matriz_conocer_posicion[1][1] * vel_angular);
+  }
 
   // Las sig 2 lineas no tienen sentido 
   // x += vel_lineal * cos(theta);
   // y += vel_lineal * sin(theta);
+
+  // Dibujar lineas con la trayectoria,, limitar, si se sale del espacio de la pantalla que se detenga, si encuentra algo lo esquiva. 
 
   //Actualizar bien theta
   //theta += vel_angular;
@@ -250,7 +292,7 @@ void setup() {
 
   // start wifi and mqtt
   WiFi.begin(ssid, pass); 
-  client.begin("192.168.0.18", net); // poner direccion ip uni 192.168.48.221, casa :192.168.0.18
+  client.begin("192.168.0.14", net); // poner direccion ip uni 192.168.48.221, casa :192.168.0.14. 
   client.onMessage(messageReceived);
 
   connect();
@@ -332,7 +374,7 @@ void delantePulso()
   Serial.print("Velocidad de los motores actual: ");
   Serial.println(velocidadMotores);
 
-  actualizarPosicion(velocidadMotores);
+  actualizarPosicion(velocidadMotores, 0,false); // o es theta?
 
   // velocidadLineal = 12.065/ velocidadSegundos;  // cm por seg, esta es velocidad lineal de los motores
   // Serial.print("Velocidad lineal actual: ");
@@ -358,12 +400,16 @@ void giroIzquierdo()
     myCoche.vueltaIzquierda();
     q++;
   }
+  // Diametro de circunferencia = pi * d
   // Medir el tiempo transcurrido
   tiempoTranscurrido = micros() - tiempoInicio;
 
   //Conociendo el angulo, la trayectoria = radio por angulo en radianes
   // 180 = pi radianes
+  // arco = angulo * radio
+  // 22.5 porque es lo que tengo configurado que rote cada vez que reciba la instruccion
   float anguloRadianes = 22.5*3.1416/180;
+  // radio es 4
   float distanciaRecorrida = 4*anguloRadianes;
   Serial.print("Distancia recorrida vuelta izq cm: ");
   Serial.println(distanciaRecorrida);
@@ -371,7 +417,12 @@ void giroIzquierdo()
   // Calcular la velocidad en PPS, 1,000,000 (microsegundos en un segundo)
   velocidadSegundos =  tiempoTranscurrido/ 1000000.0;
   velocidadMotores = distanciaRecorrida/velocidadSegundos;
-  actualizarPosicion(velocidadMotores);
+
+  Serial.print("Angulo ");
+  Serial.println(String(anguloRadianes));
+
+
+  actualizarPosicion(velocidadMotores,anguloRadianes,true);
   // Serial.print("Velocidad lineal actual: ");
   // Serial.println(velocidadMotores);
 
@@ -393,11 +444,43 @@ void giroIzquierdoAtras()
 
 void giroDerecho()
 {
+  tiempoInicio = micros();
   int q = 0;
   while (q < 400) {
     myCoche.vueltaDerecha();
     q++;
   }
+
+
+  // Diametro de circunferencia = pi * d
+  // Medir el tiempo transcurrido
+  tiempoTranscurrido = micros() - tiempoInicio;
+
+  //Conociendo el angulo, la trayectoria = radio por angulo en radianes
+  // 180 = pi radianes
+  // arco = angulo * radio
+  // 22.5 porque es lo que tengo configurado que rote cada vez que reciba la instruccion
+  float anguloRadianes = 22.5*3.1416/180;
+  // radio es 4
+  float distanciaRecorrida = 4*anguloRadianes;
+  Serial.print("Distancia recorrida vuelta izq cm: ");
+  Serial.println(distanciaRecorrida);
+
+  // Calcular la velocidad en PPS, 1,000,000 (microsegundos en un segundo)
+  velocidadSegundos =  tiempoTranscurrido/ 1000000.0;
+  velocidadMotores = distanciaRecorrida/velocidadSegundos;
+
+  Serial.print("Angulo ");
+  Serial.println(String(anguloRadianes));
+
+
+  actualizarPosicion(velocidadMotores,anguloRadianes,true);
+  // Serial.print("Velocidad lineal actual: ");
+  // Serial.println(velocidadMotores);
+
+   // Reiniciar el tiempo para la siguiente medición
+  tiempoInicio = micros();
+
 }
 
 void giroDerechoAtras()
@@ -497,9 +580,11 @@ void messageReceived(String &topic, String &payload) {
   } else if (payload.equals("delante")) {
     myCoche.delante(1);
     myCoche.delante(2);
+    myCoche.vaReversa = false;
   } else if (payload.equals("atras")) {
     myCoche.reversa(1);
     myCoche.reversa(2);
+    myCoche.vaReversa = true;
   } else if (payload.equals("subirVelocidad")) {
     myCoche.setVelocidad(myCoche.aumentoVelocidad());
     Serial.println("Nueva velocidad " + String(myCoche.getVelocidad()));
