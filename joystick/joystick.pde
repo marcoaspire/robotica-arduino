@@ -27,6 +27,7 @@ void setup() {
   client.connect("mqtt://localhost:1883/1884", "processing");
   client.subscribe("comandos");
   path = new ArrayList<PVector>();
+  path.add(new PVector(0, 0));
 }
 
 void draw() {
@@ -243,6 +244,56 @@ void messageReceived(String topic, byte[] payload) {
     robotX = nuevoX;
     robotY = nuevoY;
     robotAngle = nuevoAngulo;
+
+    if (nuevoX > 230)
+    {
+      if (nuevoY > 0)
+      {
+        // a la derecha
+        client.publish("comandos", "der");
+      }
+      else
+      {
+        // a la izquierda
+        client.publish("comandos", "izq");
+      }
+    }
+    if (nuevoX < -230)
+    {
+      if (nuevoY > 0)
+      {
+        // a la izquierda
+        client.publish("comandos", "izq");
+      }
+      else{
+        // a la derecha
+        client.publish("comandos", "der");
+      }
+    }
+    if (nuevoY >= 230)
+    {
+      if (nuevoX > 0)
+      {
+        // a la derecha
+        client.publish("comandos", "der");
+      }
+      else{
+        // a la izquierda
+        client.publish("comandos", "izq");
+      }
+    }
+    if (nuevoY < -230)
+    {
+      if (nuevoX < 0)
+      {
+        // a la izquierda
+        client.publish("comandos", "izq");
+      }
+      else{
+        // a la derecha
+        client.publish("comandos", "der");
+      }
+    }
     
 
     path.add(new PVector(robotX, robotY));  
