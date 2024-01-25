@@ -17,7 +17,7 @@ String opcion;
 String distanciaRecibida;
 
 void setup() {
-  size(400, 400);
+  size(600, 600);
   vuelta = new boolean[2];
   vuelta[0] = false;
   vuelta[1] = false; 
@@ -35,7 +35,7 @@ void draw() {
   stroke(0);
   noFill();
   translate(width/2, height/2);
-  
+
   beginShape();
    vertex(-280, -280);
    vertex(-280, 280);
@@ -51,7 +51,7 @@ void draw() {
   endShape();
 
   // Muestra el robot en la posición actual
-    drawRobot(robotX, robotY, robotAngle);
+  drawRobot(robotX, robotY, robotAngle);
 
   // Mueve el robot y agrega la posición actual a la trayectoria cada 30 frames
   // if (frameCount % 30 == 0) {
@@ -90,7 +90,7 @@ void drawRobot(float x, float y, float angle) {
         if (dis<50)
         {
           stroke(50);
-          println("Ldistancia corta cambiar color");
+          // println("Ldistancia corta cambiar color");
         }
       line(0, 0, dis, 0); // AQUI PONER la distancia que recibe , x,y,w,h
     popMatrix();
@@ -240,11 +240,10 @@ void messageReceived(String topic, byte[] payload) {
     float nuevoY = Float.parseFloat(posiciones[3])/10;
     float nuevoAngulo = Float.parseFloat(posiciones[5]);
 
-    robotX += nuevoX;
-    robotY += nuevoY;
+    robotX = nuevoX;
+    robotY = nuevoY;
     robotAngle = nuevoAngulo;
     
-
 
     path.add(new PVector(robotX, robotY));  
   }
