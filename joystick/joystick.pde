@@ -35,6 +35,7 @@ void draw() {
   stroke(0);
   noFill();
   translate(width/2, height/2);
+  
   beginShape();
    vertex(-280, -280);
    vertex(-280, 280);
@@ -74,6 +75,8 @@ void draw() {
 }
 
 void drawRobot(float x, float y, float angle) {
+  //println("drawX:" + robotX + " y:"+y + " angle:"+angle);
+  
   if (x < 270 && x > -270 && y < 270 && y > -270 )
   {
     //println("Ubicacion del robot: " + x, "," + y);
@@ -83,9 +86,12 @@ void drawRobot(float x, float y, float angle) {
       rotate(angle);
       fill(150); // cambiar color si detecta uno cercano
       rect(-5, -5, 20, 10); // robot
-      fill(100); 
+      stroke(100); 
         if (dis<50)
-          fill(50);
+        {
+          stroke(50);
+          println("Ldistancia corta cambiar color");
+        }
       line(0, 0, dis, 0); // AQUI PONER la distancia que recibe , x,y,w,h
     popMatrix();
   }
@@ -216,27 +222,29 @@ void keyReleased() {
 
 
 void messageReceived(String topic, byte[] payload) {
-  println( topic + ": " + new String(payload));
+   println( topic + ": " + new String(payload));
   // x=399,y=0,theta=0;
   opcion = new String(payload);
   opcion.trim();
   if ((opcion.startsWith("D=") || opcion.startsWith("d="))) {
     distanciaRecibida = opcion.substring(2, opcion.length() - 1);
     dis = Float.parseFloat(distanciaRecibida);
-    println("distancia recibida");
+    // println("distancia recibida");
 
     agregarDistancia(Float.parseFloat(distanciaRecibida));
   }
   else if (opcion.startsWith("X=") || opcion.startsWith("x=")) {
-    String posiciones =  opcion.split("[=,]");
+    String[] posiciones = opcion.split("[=,;]");
 
-    float nuevoX = opcion[1];
-    float nuevoY = opcion[3];
-    float nuevoAngulo = opcion[5];
+    float nuevoX = Float.parseFloat(posiciones[1])/10;
+    float nuevoY = Float.parseFloat(posiciones[3])/10;
+    float nuevoAngulo = Float.parseFloat(posiciones[5]);
 
     robotX += nuevoX;
     robotY += nuevoY;
     robotAngle = nuevoAngulo;
+    
+
 
     path.add(new PVector(robotX, robotY));  
   }
