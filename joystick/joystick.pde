@@ -12,15 +12,11 @@ float robotAngle;
 ArrayList<PVector> path;
 
 
-boolean [] vuelta;
 String opcion;
 String distanciaRecibida;
 
 void setup() {
   size(600, 600);
-  vuelta = new boolean[2];
-  vuelta[0] = false;
-  vuelta[1] = false; 
   
   client = new MQTTClient(this);
   //client.connect("mqtt://localhost", "processing");
@@ -54,25 +50,6 @@ void draw() {
   // Muestra el robot en la posición actual
   drawRobot(robotX, robotY, robotAngle);
 
-  // Mueve el robot y agrega la posición actual a la trayectoria cada 30 frames
-  // if (frameCount % 30 == 0) {
-  //   float randomX = random(-20, 20);
-  //   float randomY = random(-20, 20);
-  //   float randomAngle = random(TWO_PI);
-
-  //   robotX += randomX;
-  //   robotY += randomY;
-  //   robotAngle = randomAngle;
-
-  //   path.add(new PVector(robotX, robotY));
-  // }
-
-
-  // Dibuja los botones en forma de cruz
-  // dibujarBoton(width / 2 - botonSize / 2, height / 2 - botonSize * 2, botonSize, "△");
-  // dibujarBoton(width / 2 - botonSize / 2, height / 2 + botonSize, botonSize, "▽");
-  // dibujarBoton(width / 2 - botonSize * 2, height / 2 - botonSize / 2, botonSize, "izq");
-  // dibujarBoton(width / 2 + botonSize, height / 2 - botonSize / 2, botonSize, "der");
 }
 
 void drawRobot(float x, float y, float angle) {
@@ -80,30 +57,26 @@ void drawRobot(float x, float y, float angle) {
   
   if (x < 270 && x > -270 && y < 270 && y > -270 )
   {
-    //println("Ubicacion del robot: " + x, "," + y);
     pushMatrix();
-      //translate(width/2, height/2);
-      translate(x, y);
-      rotate(angle);
-      fill(150); // cambiar color si detecta uno cercano
-      rect(-5, -5, 20, 10); // robot
-      stroke(#55FF00); 
-        if (dis<40 || x>250 || x < -250 || y> 250 || y < -250 )
-        {
-          stroke(#FF2D00); //red
-          forzarVuelta(x,y,true, 0,0);
-          // println("Ldistancia corta cambiar color");
-        }
-      line(0, 0, dis, 0); // AQUI PONER la distancia que recibe , x,y,w,h
+    translate(x, y);
+    rotate(angle);
+    fill(150); // cambiar color si detecta uno cercano
+    rect(-5, -5, 20, 10); // robot
+    stroke(#55FF00); 
+      if (dis<40 || x>250 || x < -250 || y> 250 || y < -250 )
+      {
+        stroke(#FF2D00); //red
+        forzarVuelta(x,y,true, 0,0);
+      }
+    line(0, 0, dis, 0); // AQUI PONER la distancia que recibe , x,y,w,h
     popMatrix();
   }
   else{
-      stroke(#55FF00); 
-      line(0, 0, dis, 0);
-      forzarVuelta(x,y,true,0,0);
-
+    stroke(#55FF00); 
+    line(0, 0, dis, 0);
+    forzarVuelta(x,y,true,0,0);
     // Se sale del recuadro
-  // hacerlo girar y que avance a otra posicion
+    // hacerlo girar y que avance a otra posicion
   }
 }
 
@@ -140,96 +113,42 @@ void keyPressed() {
     // Puedes agregar aquí cualquier acción que desees realizar cuando ambas teclas estén presionadas.
   }
 
-
   if (millis() - ultimoTiempoPresionado > tiempoEspera) {
-    
-  
-
-
-  // Verifica si la tecla "A" ha sido presionada
-  if (key == ' ' || key == 'f' || key == 'F' ) {
-    println("La tecla f freno.");
-    client.publish("comandos", "detener");
-  } else if (key == 'd' || key == 'D') {
-    println("La tecla d hacia delate.");
-    client.publish("comandos", "delante");
-  } else if (key == 'a' || key == 'A' ) {
-    println("La tecla hacia atras.");
-    client.publish("comandos", "atras");
-  } else if (key == 'w' || key == 'W' ) {
-    println("La tecla subir velocidad");
-    client.publish("comandos", "subirVelocidad");
-  } else if (key == 's' || key == 'S' ) {
-    println("La tecla bajar velocidad");
-    client.publish("comandos", "bajarVelocidad");
-  } else if (key == CODED) {
-    if (keyCode == UP) {
-      println("La tecla UP");
-      client.publish("comandos", "avanzar");
-      vuelta[0] = true;
-      // if (vuelta[0] && vuelta[1])
-      // {
-      //   println("Una vuelta");
-      // }
-    } 
-    // if (keyCode == DOWN) {
-    //   vuelta[0] = true;
-    //   println("La tecla DOWN");
-    //   if (vuelta[0] && vuelta[1])
-    //   {
-    //     println("La vuelta a la derecha");
-    //   }
-    // }
-    if (keyCode == LEFT) {
-      client.publish("comandos", "izq");
-      vuelta[1] = true;
-      // if (vuelta[0] && vuelta[1])
-      // {
-      //   println("La vuelta a la izq"); 
-      // }
-    } 
-    if (keyCode == RIGHT) {
-      client.publish("comandos", "der");
-      vuelta[1] = true;
-      // if (vuelta[0] && vuelta[1])
-      // {
-      //   println("La vuelta a la derecha");
-      // }
+    // Verifica si la tecla "A" ha sido presionada
+    if (key == ' ' || key == 'f' || key == 'F' ) {
+      println("La tecla f freno.");
+      client.publish("comandos", "detener");
+    } else if (key == 'd' || key == 'D') {
+      println("La tecla d hacia delate.");
+      client.publish("comandos", "delante");
+    } else if (key == 'a' || key == 'A' ) {
+      println("La tecla hacia atras.");
+      client.publish("comandos", "atras");
+    } else if (key == 'w' || key == 'W' ) {
+      println("La tecla subir velocidad");
+      client.publish("comandos", "subirVelocidad");
+    } else if (key == 's' || key == 'S' ) {
+      println("La tecla bajar velocidad");
+      client.publish("comandos", "bajarVelocidad");
+    } else if (key == CODED) {
+      if (keyCode == UP) {
+        println("La tecla UP");
+        client.publish("comandos", "avanzar");
+      } 
+     if (keyCode == LEFT) {
+        client.publish("comandos", "izq");
+      } 
+      if (keyCode == RIGHT) {
+        client.publish("comandos", "der");
+      }
     }
-  }
     // Actualizar el tiempo de la última tecla presionada
     ultimoTiempoPresionado = millis();
   }
 }
 
-// void keyReleased() {
-  
-//   // Verifica si la tecla "A" ha sido presionada
-//   if (key == ' ' || key == 's' || key == 'S' ) {
-//     println("Solto La tecla s ha sido presionada.");
-//     // Puedes agregar aquí cualquier acción que desees realizar cuando se presiona la tecla "A"
-//   } else if (key == CODED) {
-//     if (keyCode == UP) {
-//       println("Solto La tecla UP");
-//       client.publish("comandos", "detener");
-
-//       vuelta[0] = false;
-//     } else if (keyCode == LEFT) {
-//       vuelta[1] = false;
-//       println("Solto La tecla LEFT");
-//       //client.publish("comandos", "detener");
-
-//     } else if (keyCode == RIGHT) {
-//       vuelta[1] = false;
-//       println("Solto La tecla RIGHT");
-//       //client.publish("comandos", "detener");
-//     }
-//   }
-// }
-
 
 void messageReceived(String topic, byte[] payload) {
-  // x=399,y=0,theta=0;
   opcion = new String(payload);
   opcion.trim();
   if ((opcion.startsWith("D=") || opcion.startsWith("d="))) {
@@ -278,13 +197,18 @@ void forzarVuelta(float x,float y, boolean movimientoPorDistancia, float x2, flo
 
     if (y2 > 0)
     {
-      // a la derecha
-      client.publish("comandos", "der");
+      for (int i = 0; i < 4; i++) {
+        client.publish("comandos", "der");
+        delay(1000);
+      }
     }
     else
     {
       // a la izquierda
-      client.publish("comandos", "izq");
+      for (int i = 0; i < 4; i++) {
+        client.publish("comandos", "izq");
+        delay(1000);
+      }
     }
     movimientoPorDistancia = false;
   }
@@ -293,11 +217,17 @@ void forzarVuelta(float x,float y, boolean movimientoPorDistancia, float x2, flo
     if (y2 > 0)
     {
       // a la izquierda
-      client.publish("comandos", "izq");
+      for (int i = 0; i < 4; i++) {
+        client.publish("comandos", "izq");
+        delay(1000);
+      }
     }
     else{
       // a la derecha
-      client.publish("comandos", "der");
+      for (int i = 0; i < 4; i++) {
+        client.publish("comandos", "der");
+        delay(1000);
+      }
     }
   }
   if (y2 >= 250)
@@ -305,11 +235,17 @@ void forzarVuelta(float x,float y, boolean movimientoPorDistancia, float x2, flo
     if (x2 > 0)
     {
       // a la derecha
-      client.publish("comandos", "der");
+      for (int i = 0; i < 4; i++) {
+        client.publish("comandos", "der");
+        delay(1000);
+      }
     }
     else{
       // a la izquierda
-      client.publish("comandos", "izq");
+      for (int i = 0; i < 4; i++) {
+        client.publish("comandos", "izq");
+        delay(1000);
+      }
     }
   }
   if (y2 < -230)
@@ -317,11 +253,17 @@ void forzarVuelta(float x,float y, boolean movimientoPorDistancia, float x2, flo
     if (x2 < 0)
     {
       // a la izquierda
-      client.publish("comandos", "izq");
+      for (int i = 0; i < 4; i++) {
+        client.publish("comandos", "izq");
+        delay(1000);
+      }
     }
     else{
       // a la derecha
-      client.publish("comandos", "der");
+      for (int i = 0; i < 4; i++) {
+        client.publish("comandos", "der");
+        delay(1000);
+      }
     }
   }
 }
