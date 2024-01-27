@@ -14,13 +14,31 @@ const int LedPin = 13;
 #define VEL2 1500
 #define VEL3 850
 
+#define GIR 22.5
+#define RADIORUEDA 4
+#define PI 3.1416
+#define PULSOSRUEDACOMPLETA 3200
+
 #include <WiFi.h>
 #include <MQTT.h>
-#include <AccelStepper.h>
+#include <Thread.h>
+#include <ThreadController.h>
 
 #include "Clase.h"
 Clase miObjeto; 
+  // const char ssid[] = "iot-ieya";
+  // const char pass[] = "C@IoT#148";
 
+// const char ssid[] = "Piso-sagemcom2E90";
+// const char pass[] = "WYMRW4EMMW2MMD";
+
+
+// ThreadController that will controll all threads
+ThreadController controll = ThreadController();
+Thread* thread1 = new Thread();
+Thread thread2 = Thread();
+
+String comando;
 
 int b = 16; // distancia entre ruedas
 WiFiClient net;
@@ -31,7 +49,8 @@ float velocidadDerecha;
 float velocidadAngular; 
 float velocidadLineal; 
 float velocidadSegundos;
-float velocidadMotores; 
+float velocidadMotores;
+float perimetroRueda =  2 * PI * RADIORUEDA;
 float matriz_transformacion[2][2]={{1.0/2.0,1.0/2.0},{-b/2.0,b/2.0}};
 
 unsigned long tiempoTranscurrido;
@@ -39,16 +58,19 @@ unsigned long lastMillis = 0;
 
 
 
-int x = 0;
+int x = 20;
+int x2 ;
 int y = 0;
-int theta = 0;
+int y2;
 
-AccelStepper motorIzquierdo(AccelStepper::DRIVER, STP1);
-AccelStepper motorDerecho(AccelStepper::DRIVER, STP2);
+float theta = 0;
+
 // int velocidad = 2500;
 
 int pulsos = 0;
 int q=0;
+
+bool mensajeRecibido = false;
 
 // Custom class definition
 class Coche {
@@ -200,9 +222,9 @@ public:
   }
 
 };
-
-
 Coche myCoche;
+
+
 
 int ping(int TriggerPin, int EchoPin) {
   long duration, distanceCm;
@@ -243,8 +265,9 @@ void connect() {
 // }
 
 void actualizarPosicion(float velocidadM, float angulo, bool estaGirando){
+  Serial.println("Angulo r: " + String(angulo));
+
   int vel_angular = 0;
-  float matriz_conocer_posicion[3][2]={{cos(angulo), 0},{sin(angulo),0}, {0,1}};// o es theta
 
   Serial.println("Velocidad motor: " + String(velocidadM));
   Serial.println("M{0}{0}: " + String(matriz_transformacion[0][0]));
@@ -255,6 +278,7 @@ void actualizarPosicion(float velocidadM, float angulo, bool estaGirando){
   int vel_lineal = matriz_transformacion[0][0] *velocidadM + matriz_transformacion[0][1] * velocidadM;
   Serial.println("Velocidad vel_lineal: " + String(vel_lineal));
 
+  /* 
   if (estaGirando)
   {
     vel_angular = matriz_transformacion[1][0]*velocidadM + matriz_transformacion[1][1] * velocidadM * (-1);
@@ -270,25 +294,36 @@ void actualizarPosicion(float velocidadM, float angulo, bool estaGirando){
   Serial.println(vel_lineal);
   Serial.print("Velocidad angular actual: ");
   Serial.println(vel_angular);
+  */
   // TODO: Actualiza x y , multiplicando por la matriz que falta M*{{vlineal}{w velocidad angular}}
+  
   if (myCoche.vaIzquierda)
   {
-    theta = theta - (matriz_conocer_posicion[2][0] * vel_lineal + matriz_conocer_posicion[2][1] * vel_angular);
+    // theta = theta - (matriz_conocer_posicion[2][0] * vel_lineal + matriz_conocer_posicion[2][1] * vel_angular);
+     theta = theta - angulo;
   }
   else
   {
-    theta = theta + (matriz_conocer_posicion[2][0] * vel_lineal + matriz_conocer_posicion[2][1] * vel_angular);
+    // theta = theta + (matriz_conocer_posicion[2][0] * vel_lineal + matriz_conocer_posicion[2][1] * vel_angular);
+    theta = theta + angulo;
   }
+  float matriz_conocer_posicion[3][2]={{cos(theta), 0},{sin(theta),0}, {0,1}};// o es theta
+  int movX = matriz_conocer_posicion[0][0] * vel_lineal + matriz_conocer_posicion[0][1] * vel_angular;
+  int movY = matriz_conocer_posicion[1][0] * vel_lineal + matriz_conocer_posicion[1][1] * vel_angular;
 
   if (myCoche.vaReversa)
   {
-    x = x - (matriz_conocer_posicion[0][0] * vel_lineal + matriz_conocer_posicion[0][1] * vel_angular);
-    y = y - (matriz_conocer_posicion[1][0] * vel_lineal + matriz_conocer_posicion[1][1] * vel_angular);
+    x = x - movX;
+    y = y - movY;
+    x2 = x - movX;
+    y2 = y - movY;
   }
   else
   {
-    x = x + (matriz_conocer_posicion[0][0] * vel_lineal + matriz_conocer_posicion[0][1] * vel_angular);
-    y = y + (matriz_conocer_posicion[1][0] * vel_lineal + matriz_conocer_posicion[1][1] * vel_angular);
+    x = x + movX;
+    y = y + movY;
+    x2 = x + movX;
+    y2 = y + movY;
   }
 
   // Las sig 2 lineas no tienen sentido 
@@ -303,17 +338,23 @@ void actualizarPosicion(float velocidadM, float angulo, bool estaGirando){
   Serial.print(theta);
   Serial.print("x: " + String(x) + " y: " + String(y));
   //Mandan nuevas ubicaciones
-  client.publish("/comandos", "x="+String(x)+",y="+String(y)+ ",theta="+String(theta) + ";");
+  client.publish("/comandos", "x="+String(x)+",y="+String(y)+ ",theta="+String(theta) + ",x2="+String(x2)+",y2="+String(y2)+";");
 }
 
 void setup() {
   Serial.begin(115200);
   pinMode(LedPin, OUTPUT);
   pinMode(TriggerPin, OUTPUT);
-  pinMode(EchoPin, INPUT);  
+  pinMode(EchoPin, INPUT); 
+  //
+  thread1->onRun(loop2);
+	thread1->setInterval(500);
+
+  thread2.onRun(accionARealizar);
+
   // start wifi and mqtt
   WiFi.begin(ssid, pass); 
-  client.begin("192.168.0.14", net); // poner direccion ip uni 192.168.48.221, casa :192.168.0.14. 
+  client.begin("192.168.244.81", net); // poner direccion ip uni 192.168.48.221, casa :192.168.0.14. 
   client.onMessage(messageReceived);
 
   connect();
@@ -323,6 +364,9 @@ void setup() {
   // miObjeto.ping(1,1); 
   // Serial.println("M{0}{0}: " + String(matriz_transformacion[0][0]));
   Serial.println(matriz_transformacion[1][1]);
+  controll.add(thread1);
+  controll.add(&thread2);
+
 }
 
 void frenado(int velocidadRecibida)
@@ -360,8 +404,9 @@ void delantePulso()
 {
   tiempoInicio = micros();
   int pu = 0;
-  // 12 cm
-  while (pu < 1601) {
+  int distanciaRecorrida = 0;
+  // 12 cm - 1601 
+  while (pu < 801) {
     myCoche.avanzaVuelta();
 
     // no
@@ -379,7 +424,9 @@ void delantePulso()
     // delayMicroseconds(500); //3
     pu++;
   } 
-
+  distanciaRecorrida = pu * perimetroRueda / PULSOSRUEDACOMPLETA;
+  Serial.print("Distancia: ");
+  Serial.println(String(distanciaRecorrida));
   // Medir el tiempo transcurrido
   tiempoTranscurrido = micros() - tiempoInicio;
 
@@ -389,7 +436,7 @@ void delantePulso()
 
   // Calcular la velocidad en PPS, 1,000,000 (microsegundos en un segundo)
   velocidadSegundos =  tiempoTranscurrido/ 1000000.0;
-  velocidadMotores = pu / velocidadSegundos;
+  velocidadMotores = distanciaRecorrida / velocidadSegundos;
   //Tiempo
   Serial.print("Tiempo: ");
   Serial.println(velocidadSegundos);
@@ -432,21 +479,28 @@ void giroIzquierdo()
   // 180 = pi radianes
   // arco = angulo * radio
   // 22.5 porque es lo que tengo configurado que rote cada vez que reciba la instruccion
-  float anguloRadianes = 22.5*3.1416/180;
+  float anguloRadianes = GIR*3.1416/180;
   // radio es 4
-  float distanciaRecorrida = 4*anguloRadianes;
+  float distanciaRecorrida = RADIORUEDA*anguloRadianes;
   Serial.print("Distancia recorrida vuelta izq cm: ");
   Serial.println(distanciaRecorrida);
 
   // Calcular la velocidad en PPS, 1,000,000 (microsegundos en un segundo)
-  velocidadSegundos =  tiempoTranscurrido/ 1000000.0;
+  velocidadSegundos = tiempoTranscurrido/ 1000000.0;
+  Serial.print("velocidad en seg: ");
+  Serial.println(String(velocidadSegundos));
+
   velocidadMotores = distanciaRecorrida/velocidadSegundos;
+  
+  Serial.print("Velocidad angular: ");
+
+  Serial.println(String(anguloRadianes/velocidadSegundos));
 
   Serial.print("Angulo ");
   Serial.println(String(anguloRadianes));
 
 
-  actualizarPosicion(velocidadMotores,anguloRadianes,true);
+  actualizarPosicion(velocidadMotores,anguloRadianes,true); 
   // Serial.print("Velocidad lineal actual: ");
   // Serial.println(velocidadMotores);
 
@@ -484,9 +538,8 @@ void giroDerecho()
   // 180 = pi radianes
   // arco = angulo * radio
   // 22.5 porque es lo que tengo configurado que rote cada vez que reciba la instruccion
-  float anguloRadianes = 22.5*3.1416/180;
-  // radio es 4
-  float distanciaRecorrida = 4*anguloRadianes;
+  float anguloRadianes = GIR*PI/180;
+  float distanciaRecorrida = RADIORUEDA*anguloRadianes;
   Serial.print("Distancia recorrida vuelta izq cm: ");
   Serial.println(distanciaRecorrida);
 
@@ -519,6 +572,21 @@ void giroDerechoAtras()
 
 int qwerty = 0;
 void loop() {
+  // El bucle principal no hace nada aquí
+  // if(thread1.shouldRun())
+	// 	thread1.run();
+  // if(thread2.shouldRun())
+	// 	thread2.run();
+  // run ThreadController
+	// this will check every thread inside ThreadController,
+	// if it should run. If yes, he will run it;
+	controll.run();
+}
+
+void loop2() {
+  
+  
+  
     //Serial.println("1velocidadDer: " + String(velocidadDerecha));
 
     // no funciono
@@ -583,51 +651,69 @@ void loop() {
   Serial.println("terminaando...");
   pulsos++;
 */  
-  int cm = ping(TriggerPin, EchoPin);
-  delay(1000);
-  // publish a message roughly every second.
-  if (millis() - lastMillis > 5000) {
-    lastMillis = millis();
-    client.publish("/comandos", "D=" + String(cm) + ";");
-  }
+    //Serial.println("Hilo 1 ");
+    int cm = ping(TriggerPin, EchoPin);
+    delay(1000);
+    // publish a message roughly every second.
+    if (millis() - lastMillis > 5000) {
+      lastMillis = millis();
+      client.publish("/comandos", "D=" + String(cm) + ";");
+    }
+  
+}
+
+void accionARealizar(){
+  
+    //Serial.println("qq " + String(mensajeRecibido));
+    if (mensajeRecibido)
+    {
+      Serial.println("Entramos " + comando);
+      if (comando.equals("avanzar")) {
+        Serial.println("avanzando!!!!");
+        delantePulso();  
+      } else if (comando.equals("der")) {
+        if (digitalRead(DIR1) == 0 )
+          giroDerecho();
+        else 
+          giroDerechoAtras();
+      } else if (comando.equals("izq")) {
+        if (digitalRead(DIR1) == 0 )
+          giroIzquierdo();
+        else 
+          giroIzquierdoAtras();
+      } else if (comando.equals("delante")) {
+        myCoche.delante(1);
+        myCoche.delante(2);
+        myCoche.vaReversa = false;
+      } else if (comando.equals("atras")) {
+        myCoche.reversa(1);
+        myCoche.reversa(2);
+        myCoche.vaReversa = true;
+        Serial.println("interrupcion despues ");
+
+      } else if (comando.equals("subirVelocidad")) {
+        myCoche.setVelocidad(myCoche.aumentoVelocidad());
+        Serial.println("Nueva velocidad " + String(myCoche.getVelocidad()));
+      } else if (comando.equals("bajarVelocidad")) {
+        myCoche.setVelocidad(myCoche.reduccionVelocidad());
+        Serial.println("Nueva velocidad " + String(myCoche.getVelocidad()));
+      } else if (comando.equals("detener")) {
+        int velocidadActual = myCoche.getVelocidad();
+        if (velocidadActual < 2500){
+          frenado(velocidadActual);
+        }
+      } else {
+        // Manejar el caso por defecto (comando no reconocido)
+        //Serial.println("Comando no reconocido");
+      } 
+      mensajeRecibido = false; 
+    }
+  
 }
 
 void messageReceived(String &topic, String &payload) {
   Serial.println(topic + ": " + payload);
-  if (payload.equals("avanzar")) {
-    Serial.println("Entramos ");
-    delantePulso();  
-  } else if (payload.equals("der")) {
-    if (digitalRead(DIR1) == 0 )
-      giroDerecho();
-    else 
-      giroDerechoAtras();
-  } else if (payload.equals("izq")) {
-    if (digitalRead(DIR1) == 0 )
-      giroIzquierdo();
-    else 
-      giroIzquierdoAtras();
-  } else if (payload.equals("delante")) {
-    myCoche.delante(1);
-    myCoche.delante(2);
-    myCoche.vaReversa = false;
-  } else if (payload.equals("atras")) {
-    myCoche.reversa(1);
-    myCoche.reversa(2);
-    myCoche.vaReversa = true;
-  } else if (payload.equals("subirVelocidad")) {
-    myCoche.setVelocidad(myCoche.aumentoVelocidad());
-    Serial.println("Nueva velocidad " + String(myCoche.getVelocidad()));
-  } else if (payload.equals("bajarVelocidad")) {
-    myCoche.setVelocidad(myCoche.reduccionVelocidad());
-    Serial.println("Nueva velocidad " + String(myCoche.getVelocidad()));
-  } else if (payload.equals("detener")) {
-    int velocidadActual = myCoche.getVelocidad();
-    if (velocidadActual < 2500){
-      frenado(velocidadActual);
-    }
-  } else {
-    // Manejar el caso por defecto (comando no reconocido)
-    Serial.println("Comando no reconocido");
-  }  
+  mensajeRecibido = true;
+  //Serial.println("qwerty: " + String(mensajeRecibido));
+  comando = payload;
 }
