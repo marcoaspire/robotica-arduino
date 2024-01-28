@@ -14,6 +14,7 @@ const int LedPin = 13;
 #define VEL2 1500
 #define VEL3 850
 
+//Datos de la rueda
 #define GIR 22.5
 #define RADIORUEDA 4
 #define PI 3.1416
@@ -21,22 +22,15 @@ const int LedPin = 13;
 
 #include <WiFi.h>
 #include <MQTT.h>
-#include <Thread.h>
-#include <ThreadController.h>
 
-#include "Clase.h"
-Clase miObjeto; 
-  // const char ssid[] = "iot-ieya";
-  // const char pass[] = "C@IoT#148";
+// const char ssid[] = "iot-ieya";
+// const char pass[] = "C@IoT#148";
 
 // const char ssid[] = "Piso-sagemcom2E90";
 // const char pass[] = "WYMRW4EMMW2MMD";
 
-
-// ThreadController that will controll all threads
-ThreadController controll = ThreadController();
-Thread* thread1 = new Thread();
-Thread thread2 = Thread();
+const char ssid[] = "Galaxy";
+const char pass[] = "123456789";
 
 String comando;
 
@@ -55,24 +49,21 @@ float matriz_transformacion[2][2]={{1.0/2.0,1.0/2.0},{-b/2.0,b/2.0}};
 
 unsigned long tiempoTranscurrido;
 unsigned long lastMillis = 0;
+bool obstaculoDetectado = false;
+int limiteDistancia = 40;
 
 
-
-int x = 20;
+int x = 0;
 int x2 ;
 int y = 0;
 int y2;
-
 float theta = 0;
-
-// int velocidad = 2500;
 
 int pulsos = 0;
 int q=0;
 
 bool mensajeRecibido = false;
 
-// Custom class definition
 class Coche {
 private:
 	int velocidad;
@@ -81,7 +72,7 @@ public:
   bool vaIzquierda;  
   // Constructor
   /*
-    Rueda mide 7 cm, perimetro pi * diametro = 21.99 cm avanza cada vuelta
+    Datos calculados
     Rueda mide 8 cm, perimetro pi * diametro = 25.13 cm avanza cada vuelta es esta
     25 cm - necesita 3200 pulsos aka 360 
     i.e 8.888 pulsos equivale a un grado  
@@ -93,13 +84,10 @@ public:
     1.505  |22.5| 200  | .5
     .0335  |1   | 8.888| 
            |.05  |  1
-    velocidad angular = angulo rotado/ tiempo 
+    velocidad angular = arco / tiempo 
     velocidad lineal = distancia / tiempo
-
   */ 
   Coche() {
-
-
     pinMode(STP1, OUTPUT);
     pinMode(STP2, OUTPUT);
     pinMode(EN, OUTPUT);
@@ -142,35 +130,18 @@ public:
     digitalWrite( STP1, HIGH );
     digitalWrite( STP2, LOW );
     digitalWrite( STP1, LOW );
-    //delayMicroseconds(500);
     delayMicroseconds(velocidad); //2
-    //velocidadIzquierda = motorIzquierdo.speed();
-    //velocidadDerecha = motorDerecho.speed();
-    //Serial.println("velocidadDer: " + String(velocidadDerecha));
-    //Serial.println("velocidadIzq: " + String(velocidadIzquierda));
   }
 
   void vueltaIzquierda(){
-    //TODO: Calcula la cantidad de pasos necesarios para girar 45 grados, diametro de rueda?
-    int vueltasNecesarias = 10;
-    int vuetasRealizadas = 0;
     reversa(1);
     avanzaVuelta();
     vaIzquierda = true;
-
-    /*
-    while (vuetasRealizadas < vueltasNecesarias)
-    {
-      avanzaVuelta();
-      vuetasRealizadas++;
-    }
-    */
     delante(1);
   }
 
   void vueltaIzquierdaAtras(){
     //ambos motores reversa 
-    //TODO: Calcula la cantidad de pasos necesarios para girar 45 grados, diametro de rueda?
     int vueltasNecesarias = 10;
     int vuetasRealizadas = 0;
     delante(1);
@@ -264,7 +235,7 @@ void connect() {
 
 // }
 
-void actualizarPosicion(float velocidadM, float angulo, bool estaGirando){
+void actualizarPosicion(float velocidadM, float angulo){
   Serial.println("Angulo r: " + String(angulo));
 
   int vel_angular = 0;
@@ -336,25 +307,27 @@ void actualizarPosicion(float velocidadM, float angulo, bool estaGirando){
   //theta += vel_angular;
   Serial.print("theta ");
   Serial.print(theta);
-  Serial.print("x: " + String(x) + " y: " + String(y));
+  Serial.println("x: " + String(x) + " y: " + String(y));
+  Serial.println("PosiblesX2: " + String(x2) + " y2: " + String(y2));
+
   //Mandan nuevas ubicaciones
   client.publish("/comandos", "x="+String(x)+",y="+String(y)+ ",theta="+String(theta) + ",x2="+String(x2)+",y2="+String(y2)+";");
 }
 
 void setup() {
+  client.begin("192.168.244.81", net); // poner direccion ip uni 192.168.48.221, casa :192.168.0.14. 
   Serial.begin(115200);
   pinMode(LedPin, OUTPUT);
   pinMode(TriggerPin, OUTPUT);
   pinMode(EchoPin, INPUT); 
-  //
+  /*
   thread1->onRun(loop2);
 	thread1->setInterval(500);
 
   thread2.onRun(accionARealizar);
-
+  */
   // start wifi and mqtt
   WiFi.begin(ssid, pass); 
-  client.begin("192.168.244.81", net); // poner direccion ip uni 192.168.48.221, casa :192.168.0.14. 
   client.onMessage(messageReceived);
 
   connect();
@@ -364,8 +337,8 @@ void setup() {
   // miObjeto.ping(1,1); 
   // Serial.println("M{0}{0}: " + String(matriz_transformacion[0][0]));
   Serial.println(matriz_transformacion[1][1]);
-  controll.add(thread1);
-  controll.add(&thread2);
+  // controll.add(thread1);
+  // controll.add(&thread2);
 
 }
 
@@ -445,7 +418,7 @@ void delantePulso()
   Serial.print("Velocidad de los motores actual: ");
   Serial.println(velocidadMotores);
 
-  actualizarPosicion(velocidadMotores, 0,false); // o es theta?
+  actualizarPosicion(velocidadMotores, 0); // o es theta?
 
   // velocidadLineal = 12.065/ velocidadSegundos;  // cm por seg, esta es velocidad lineal de los motores
   // Serial.print("Velocidad lineal actual: ");
@@ -500,7 +473,7 @@ void giroIzquierdo()
   Serial.println(String(anguloRadianes));
 
 
-  actualizarPosicion(velocidadMotores,anguloRadianes,true); 
+  actualizarPosicion(velocidadMotores,anguloRadianes); 
   // Serial.print("Velocidad lineal actual: ");
   // Serial.println(velocidadMotores);
 
@@ -551,7 +524,7 @@ void giroDerecho()
   Serial.println(String(anguloRadianes));
 
 
-  actualizarPosicion(velocidadMotores,anguloRadianes,true);
+  actualizarPosicion(velocidadMotores,anguloRadianes);
   // Serial.print("Velocidad lineal actual: ");
   // Serial.println(velocidadMotores);
 
@@ -571,7 +544,7 @@ void giroDerechoAtras()
 
 
 int qwerty = 0;
-void loop() {
+void loo2() {
   // El bucle principal no hace nada aquí
   // if(thread1.shouldRun())
 	// 	thread1.run();
@@ -580,10 +553,10 @@ void loop() {
   // run ThreadController
 	// this will check every thread inside ThreadController,
 	// if it should run. If yes, he will run it;
-	controll.run();
+	//controll.run();
 }
 
-void loop2() {
+void loop() {
   
   
   
@@ -652,7 +625,17 @@ void loop2() {
   pulsos++;
 */  
     //Serial.println("Hilo 1 ");
+
+    // if(!obstaculoDetectado)
+    // {
+    //   delantePulso();
+    // }
+
     int cm = ping(TriggerPin, EchoPin);
+    // if (cm <= limiteDistancia)
+    // {
+    //  obstaculoDetectado = true; 
+    // }
     delay(1000);
     // publish a message roughly every second.
     if (millis() - lastMillis > 5000) {
@@ -662,12 +645,12 @@ void loop2() {
   
 }
 
-void accionARealizar(){
+void accionARealizar(String comando){
   
     //Serial.println("qq " + String(mensajeRecibido));
     if (mensajeRecibido)
     {
-      Serial.println("Entramos " + comando);
+      //Serial.println("Entramos " + comando);
       if (comando.equals("avanzar")) {
         Serial.println("avanzando!!!!");
         delantePulso();  
@@ -712,8 +695,9 @@ void accionARealizar(){
 }
 
 void messageReceived(String &topic, String &payload) {
-  Serial.println(topic + ": " + payload);
+  //Serial.println(topic + ": " + payload);
   mensajeRecibido = true;
   //Serial.println("qwerty: " + String(mensajeRecibido));
   comando = payload;
+  accionARealizar(payload);
 }
