@@ -16,7 +16,7 @@ String opcion;
 String distanciaRecibida;
 
 void setup() {
-  size(600, 600);
+  size(700, 600);
   
   client = new MQTTClient(this);
   //client.connect("mqtt://localhost", "processing");
@@ -27,12 +27,14 @@ void setup() {
 }
 
 void draw() {
+  
   background(255);
   // Muestra la trayectoria
   stroke(#009EFF); // azul
   noFill();
-  translate(width/2, height/2);
-
+  translate(600/2, height/2);
+  textSize(64);
+  text(dis, 280, 0);
   beginShape();
    vertex(-280, -280);
    vertex(-280, 280);

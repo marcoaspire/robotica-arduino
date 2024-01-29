@@ -23,7 +23,14 @@ const int LedPin = 13;
 #include <WiFi.h>
 #include <MQTT.h>
 
+// const char ssid[] = "iot-ieya";
+// const char pass[] = "C@IoT#148";
 
+// const char ssid[] = "Piso-sagemcom2E90";
+// const char pass[] = "WYMRW4EMMW2MMD";
+
+const char ssid[] = "Galaxy";
+const char pass[] = "123456789";
 
 String comando;
 
@@ -327,6 +334,8 @@ void giroIzquierdo()
        45  | 800
        22.5| 400  
   */
+
+ 
   while (q < 400) {
     myCoche.vueltaIzquierda();
     q++;
@@ -420,7 +429,7 @@ void loop() {
     - regresar a la velocidad anterior
     - 
   */
-    int cm = ping(TriggerPin, EchoPin);
+    int cm = ping(TriggerPin, EchoPin,500);
     delay(1000);
     // publish a message roughly every second.
     if (millis() - lastMillis > 5000) {
@@ -463,7 +472,8 @@ void accionARealizar(String comando){
         myCoche.setVelocidad(myCoche.reduccionVelocidad());
         Serial.println("Nueva velocidad " + String(myCoche.getVelocidad()));
       } else if (comando.equals("detener")) {
-        int velocidadActual = myCoche.getVelocidad();  
+        int velocidadActual = myCoche.getVelocidad();
+        myCoche.detenerMotores();  
       } else {
         // Manejar el caso por defecto (comando no reconocido)
         //Serial.println("Comando no reconocido");
