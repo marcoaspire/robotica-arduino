@@ -32,9 +32,11 @@ void draw() {
   // Muestra la trayectoria
   stroke(#009EFF); // azul
   noFill();
+  // Se mueve el plano para que el punto medio (0,0) se encuentre al centro 
   translate(600/2, height/2);
   textSize(64);
   text(dis, 280, 0);
+  // Vertices del robot que represento 
   beginShape();
    vertex(-280, -280);
    vertex(-280, 280);
@@ -42,7 +44,7 @@ void draw() {
    vertex(280, -280);
   endShape(CLOSE);
   beginShape();
-
+  // Recorro el array donde se tiene todos los puntos por el que el robot ha pasado
     for (PVector point : path) {
       vertex(point.x, point.y);
     }
@@ -54,6 +56,7 @@ void draw() {
 
 }
 
+// Dibujo el robot
 void drawRobot(float x, float y, float angle) {
   //println("drawX:" + robotX + " y:"+y + " angle:"+angle);
   
@@ -65,12 +68,12 @@ void drawRobot(float x, float y, float angle) {
     fill(150); // cambiar color si detecta uno cercano
     rect(-5, -5, 20, 10); // robot
     stroke(#55FF00); 
-      if (dis<40 || x>250 || x < -250 || y> 250 || y < -250 )
+      if (dis<20 || x>250 || x < -250 || y> 250 || y < -250 )
       {
         stroke(#FF2D00); //red
         forzarVuelta(x,y,true, 0,0);
       }
-    line(0, 0, dis, 0); // AQUI PONER la distancia que recibe , x,y,w,h
+    line(0, 0, dis, 0); 
     popMatrix();
   }
   else{
@@ -109,14 +112,7 @@ void checkButton(float x, float y, float size, int boton) {
 }
 
 void keyPressed() {
-
-  if (key == 'A' && keyPressed == true && keyEvent.isShiftDown() && keyEvent.getKey() == 'B') {
-    println("Las teclas A y B están siendo presionadas al mismo tiempo.");
-    // Puedes agregar aquí cualquier acción que desees realizar cuando ambas teclas estén presionadas.
-  }
-
   if (millis() - ultimoTiempoPresionado > tiempoEspera) {
-    // Verifica si la tecla "A" ha sido presionada
     if (key == ' ' || key == 'f' || key == 'F' ) {
       println("La tecla f freno.");
       client.publish("comandos", "detener");
@@ -163,7 +159,7 @@ void messageReceived(String topic, byte[] payload) {
   else if (opcion.startsWith("X=") || opcion.startsWith("x=")) {
 
     String[] posiciones = opcion.split("[=,;]");
-    println(   "x: " +  posiciones[1] + " Y:"+  posiciones[3]);
+    // println(   "x: " +  posiciones[1] + " Y:"+  posiciones[3]);
 
     float nuevoX = Float.parseFloat(posiciones[1])*10;
     float nuevoY =  Float.parseFloat(posiciones[3])*10;
@@ -174,7 +170,7 @@ void messageReceived(String topic, byte[] payload) {
     robotX = nuevoX;
     robotY = nuevoY;
     robotAngle = nuevoAngulo;
-    println(   "robotX: " +  nuevoX + " robotY:"+  nuevoY + ",px:" + posibleX2+ ",pY"+ posibleY2);
+    // println(   "robotX: " +  nuevoX + " robotY:"+  nuevoY + ",px:" + posibleX2+ ",pY"+ posibleY2);
     forzarVuelta(nuevoX,nuevoY, false,posibleX2,posibleY2);
     path.add(new PVector(robotX, robotY));  
   }
@@ -201,7 +197,7 @@ void forzarVuelta(float x,float y, boolean movimientoPorDistancia, float x2, flo
     {
       for (int i = 0; i < 4; i++) {
         client.publish("comandos", "der");
-        delay(1000);
+        delay(2000);
       }
     }
     else
@@ -209,7 +205,7 @@ void forzarVuelta(float x,float y, boolean movimientoPorDistancia, float x2, flo
       // a la izquierda
       for (int i = 0; i < 4; i++) {
         client.publish("comandos", "izq");
-        delay(1000);
+        delay(2000);
       }
     }
     movimientoPorDistancia = false;
@@ -221,14 +217,14 @@ void forzarVuelta(float x,float y, boolean movimientoPorDistancia, float x2, flo
       // a la izquierda
       for (int i = 0; i < 4; i++) {
         client.publish("comandos", "izq");
-        delay(1000);
+        delay(2000);
       }
     }
     else{
       // a la derecha
       for (int i = 0; i < 4; i++) {
         client.publish("comandos", "der");
-        delay(1000);
+        delay(2000);
       }
     }
   }
@@ -239,14 +235,14 @@ void forzarVuelta(float x,float y, boolean movimientoPorDistancia, float x2, flo
       // a la derecha
       for (int i = 0; i < 4; i++) {
         client.publish("comandos", "der");
-        delay(1000);
+        delay(2000);
       }
     }
     else{
       // a la izquierda
       for (int i = 0; i < 4; i++) {
         client.publish("comandos", "izq");
-        delay(1000);
+        delay(2000);
       }
     }
   }
@@ -257,14 +253,14 @@ void forzarVuelta(float x,float y, boolean movimientoPorDistancia, float x2, flo
       // a la izquierda
       for (int i = 0; i < 4; i++) {
         client.publish("comandos", "izq");
-        delay(1000);
+        delay(2000);
       }
     }
     else{
       // a la derecha
       for (int i = 0; i < 4; i++) {
         client.publish("comandos", "der");
-        delay(1000);
+        delay(2000);
       }
     }
   }
